@@ -1,0 +1,44 @@
+/* Reset default browser spacing */
+* {
+  box-sizing: border-box;
+}
+
+/* Page styling */
+body {
+  margin: 0;
+  padding: 10px;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f5f5f5;
+}
+
+/* Dashboard heading */
+h2 {
+  margin-bottom: 10px;
+  text-align: center;
+  color: #b30000;
+}
+
+/* ✅ MOST IMPORTANT: Map container */
+#map {
+  height: 500px;          /* REQUIRED – without this map is invisible */
+  width: 100%;            /* Full width */
+  border: 3px solid #000; /* Visible border for confirmation */
+  border-radius: 6px;
+}
+
+/* Distance text (Google Maps–like info) */
+#distance {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  #map {
+    height: 400px;
+  }
+}
+
