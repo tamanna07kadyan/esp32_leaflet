@@ -1,139 +1,96 @@
-/* ===========================
-   FIRE LOCATION
-=========================== */
+/* ===============================
+   FIRE ESP32 FIXED LOCATION
+================================ */
+const fireESP32 = {
+  lat: 26.398612,
+  lon: 75.876319
+};
 
-const fireLat = 26.403505;
-const fireLon = 75.875557;
-
-/* ===========================
-   INITIALIZE MAP
-=========================== */
-
-var map = L.map("map").setView([fireLat, fireLon], 18);
+/* ===============================
+   MAP INITIALIZATION
+================================ */
+const map = L.map("map").setView([fireESP32.lat, fireESP32.lon], 18);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "© OpenStreetMap contributors",
-  maxZoom: 22
+  maxZoom: 22,
+  attribution: "© OpenStreetMap"
 }).addTo(map);
 
-/* ===========================
+/* ===============================
    FIRE MARKER
-=========================== */
-
-var fireIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/785/785116.png",
-  iconSize: [40, 40],
-  iconAnchor: [20, 40]
-});
-
-L.marker([fireLat, fireLon], { icon: fireIcon })
+================================ */
+const fireMarker = L.marker([fireESP32.lat, fireESP32.lon])
   .addTo(map)
-  .bindPopup("🔥 Fire Location")
-  .openPopup();
+  .bindPopup("🔥 Fire Detected");
 
-/* ===========================
-   PERSON MARKER
-=========================== */
+/* ===============================
+   CONTROL ROOM MARKER (GPS)
+================================ */
+let controlMarker = null;
+let pathLine = null;
 
-var personIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
-  iconSize: [35, 35],
-  iconAnchor: [17, 35]
-});
+/* ===============================
+   DISTANCE FUNCTION
+================================ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
 
-var personMarker = L.marker([fireLat, fireLon], { icon: personIcon }).addTo(map);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
 
-/* ===========================
-   ROUTE LINE
-=========================== */
-
-var routeLine = L.polyline([], {
-  color: "red",
-  weight: 6
-}).addTo(map);
-
-/* ===========================
-   FUNCTION TO GET ROAD ROUTE
-=========================== */
-
-async function fetchRoute(userLat, userLon) {
-
-  const url =
-    `https://router.project-osrm.org/route/v1/driving/` +
-    `${userLon},${userLat};${fireLon},${fireLat}` +
-    `?overview=full&geometries=geojson`;
-
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.routes && data.routes.length > 0) {
-
-      const coordinates = data.routes[0].geometry.coordinates;
-
-      const latLngs = coordinates.map(coord => [
-        coord[1],  // latitude
-        coord[0]   // longitude
-      ]);
-
-      routeLine.setLatLngs(latLngs);
-    }
-
-  } catch (error) {
-    console.log("Routing error:", error);
-  }
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/* ===========================
-   REAL TIME GPS TRACKING
-=========================== */
-
-var lastLat = null;
-var lastLon = null;
-
-if (navigator.geolocation) {
+/* ===============================
+   REAL GPS TRACKING
+================================ */
+if ("geolocation" in navigator) {
 
   navigator.geolocation.watchPosition(
-    function(position) {
+    (position) => {
 
-      const userLat = position.coords.latitude;
-      const userLon = position.coords.longitude;
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
 
-      // Ignore tiny movements (<2 meters)
-      if (lastLat && lastLon) {
-        const distance = map.distance(
-          [lastLat, lastLon],
-          [userLat, userLon]
-        );
-        if (distance < 2) return;
+      if (!controlMarker) {
+        controlMarker = L.marker([lat, lon]).addTo(map);
+        pathLine = L.polyline([[lat, lon], [fireESP32.lat, fireESP32.lon]], {
+          color: "red"
+        }).addTo(map);
+      } else {
+        controlMarker.setLatLng([lat, lon]);
+        pathLine.setLatLngs([[lat, lon], [fireESP32.lat, fireESP32.lon]]);
       }
 
-      lastLat = userLat;
-      lastLon = userLon;
+      const distance = calculateDistance(
+        lat, lon,
+        fireESP32.lat, fireESP32.lon
+      ).toFixed(2);
 
-      // Move marker
-      personMarker.setLatLng([userLat, userLon]);
-
-      // Center map
-      map.panTo([userLat, userLon]);
-
-      // Fetch new route
-      fetchRoute(userLat, userLon);
+      document.getElementById("distance").innerHTML =
+        "📍 Distance to fire: " + distance + " meters";
 
     },
-    function() {
-      alert("Please allow location access.");
+    (error) => {
+      document.getElementById("distance").innerHTML =
+        "❌ Location error: Allow GPS permission";
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 0,
+      maximumAge: 1000,
       timeout: 10000
     }
   );
 
 } else {
-  alert("Geolocation not supported.");
+  alert("GPS not supported");
 }
+
 
 
 
