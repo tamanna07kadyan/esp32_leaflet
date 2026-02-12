@@ -25,12 +25,10 @@ var fireIcon = L.icon({
   iconAnchor: [17, 35]
 });
 
-var fireMarker = L.marker(
-  [fireLocation.lat, fireLocation.lon],
-  { icon: fireIcon }
-).addTo(map);
-
-fireMarker.bindPopup("🔥 FIRE DETECTED").openPopup();
+L.marker([fireLocation.lat, fireLocation.lon], { icon: fireIcon })
+  .addTo(map)
+  .bindPopup("🔥 FIRE DETECTED")
+  .openPopup();
 
 
 /* =================================
@@ -48,46 +46,38 @@ var controlIcon = L.icon({
   iconAnchor: [15, 30]
 });
 
-var controlMarker = L.marker(
-  [controlRoom.lat, controlRoom.lon],
-  { icon: controlIcon }
-).addTo(map);
-
-controlMarker.bindPopup("🏢 Control Room");
+L.marker([controlRoom.lat, controlRoom.lon], { icon: controlIcon })
+  .addTo(map)
+  .bindPopup("🏢 Control Room");
 
 
 /* =================================
-   4. MOVING LOCATION (LIVE USER)
+   4. MOVING USER MARKER
 ================================= */
 
-var movingIcon = L.icon({
+var userIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
   iconSize: [30, 30],
   iconAnchor: [15, 30]
 });
 
-var movingMarker = L.marker([0, 0], {
-  icon: movingIcon
-}).addTo(map);
-
-movingMarker.bindPopup("📍 Moving Location");
+var userMarker = L.marker([0, 0], { icon: userIcon }).addTo(map);
 
 
 /* =================================
-   5. DASHED PATH (TRAVELLED PATH)
+   5. SOLID PATH (FULL LINE)
 ================================= */
-
-var travelledPath = L.polyline([], {
-  color: "blue",
-  weight: 4,
-  dashArray: "8,8"
-}).addTo(map);
 
 var pathCoordinates = [];
 
+var travelledPath = L.polyline(pathCoordinates, {
+  color: "blue",
+  weight: 5
+}).addTo(map);
+
 
 /* =================================
-   6. DISTANCE CALCULATION FUNCTION
+   6. DISTANCE FUNCTION
 ================================= */
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -99,8 +89,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c * 1000;
@@ -108,46 +97,65 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 
 /* =================================
-   7. REAL-TIME GPS TRACKING
+   7. REAL GPS TRACKING (STABLE)
 ================================= */
+
+var lastLat = null;
+var lastLon = null;
 
 if (navigator.geolocation) {
 
-  navigator.geolocation.watchPosition(function (position) {
+  navigator.geolocation.watchPosition(
+    function (position) {
 
-    var userLat = position.coords.latitude;
-    var userLon = position.coords.longitude;
+      var userLat = position.coords.latitude;
+      var userLon = position.coords.longitude;
 
-    movingMarker.setLatLng([userLat, userLon]);
+      // Ignore very tiny movements (GPS noise)
+      if (lastLat && lastLon) {
+        var movement = calculateDistance(lastLat, lastLon, userLat, userLon);
+        if (movement < 1) return; // Ignore movement less than 1 meter
+      }
 
-    map.setView([userLat, userLon], 19);
+      lastLat = userLat;
+      lastLon = userLon;
 
-    pathCoordinates.push([userLat, userLon]);
-    travelledPath.setLatLngs(pathCoordinates);
+      // Update marker
+      userMarker.setLatLng([userLat, userLon]);
 
-    var distance = calculateDistance(
-      userLat,
-      userLon,
-      fireLocation.lat,
-      fireLocation.lon
-    ).toFixed(2);
+      // Add to path
+      pathCoordinates.push([userLat, userLon]);
+      travelledPath.setLatLngs(pathCoordinates);
 
-    document.getElementById("distance").innerHTML =
-      "🔥 Distance to Fire: " + distance + " meters";
+      // Keep map centered smoothly
+      map.setView([userLat, userLon]);
 
-  },
-  function () {
-    alert("Location access denied. Please allow GPS permission.");
-  },
-  {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 5000
-  });
+      // Distance to fire
+      var distance = calculateDistance(
+        userLat,
+        userLon,
+        fireLocation.lat,
+        fireLocation.lon
+      ).toFixed(2);
+
+      document.getElementById("distance").innerHTML =
+        "🔥 Distance to Fire: " + distance + " meters";
+
+    },
+    function (error) {
+      alert("Location access denied. Please allow GPS.");
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    }
+  );
 
 } else {
-  alert("Geolocation is not supported by this browser.");
+  alert("Geolocation not supported.");
 }
+
 
    
 
