@@ -1,20 +1,24 @@
-/* ==============================
-   1. INITIALIZE MAP
-============================== */
+/* =========================
+   FIRE LOCATION
+========================= */
 
-var map = L.map("map").setView([26.403505, 75.875557], 18);
+const fireLat = 26.403505;
+const fireLon = 75.875557;
+
+/* =========================
+   INITIALIZE MAP
+========================= */
+
+var map = L.map("map").setView([fireLat, fireLon], 18);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap contributors",
   maxZoom: 22
 }).addTo(map);
 
-
-/* ==============================
-   2. FIRE LOCATION
-============================== */
-
-var fireLocation = L.latLng(26.403505, 75.875557);
+/* =========================
+   FIRE ICON
+========================= */
 
 var fireIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/785/785116.png",
@@ -22,15 +26,14 @@ var fireIcon = L.icon({
   iconAnchor: [20, 40]
 });
 
-L.marker(fireLocation, { icon: fireIcon })
+L.marker([fireLat, fireLon], { icon: fireIcon })
   .addTo(map)
   .bindPopup("🔥 Fire Location")
   .openPopup();
 
-
-/* ==============================
-   3. PERSON ICON (GPS)
-============================== */
+/* =========================
+   PERSON ICON
+========================= */
 
 var personIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
@@ -38,58 +41,75 @@ var personIcon = L.icon({
   iconAnchor: [17, 35]
 });
 
-var personMarker = L.marker([0, 0], { icon: personIcon }).addTo(map);
+var personMarker = L.marker([fireLat, fireLon], { icon: personIcon }).addTo(map);
 
+/* =========================
+   ROUTE LINE
+========================= */
 
-/* ==============================
-   4. ROUTING CONTROL
-============================== */
+var routeLine = L.polyline([], {
+  color: "red",
+  weight: 6
+}).addTo(map);
 
-var routingControl = null;
+/* =========================
+   FETCH ROUTE FROM OSRM
+========================= */
 
+async function getRoute(userLat, userLon) {
 
-/* ==============================
-   5. REAL TIME GPS TRACKING
-============================== */
+  const url = `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${fireLon},${fireLat}?overview=full&geometries=geojson`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (data.routes.length > 0) {
+
+    const routeCoordinates = data.routes[0].geometry.coordinates;
+
+    const latLngs = routeCoordinates.map(coord => [coord[1], coord[0]]);
+
+    routeLine.setLatLngs(latLngs);
+  }
+}
+
+/* =========================
+   REAL TIME GPS
+========================= */
+
+var lastLat = null;
+var lastLon = null;
 
 if (navigator.geolocation) {
 
   navigator.geolocation.watchPosition(
-    function (position) {
+    function(position) {
 
-      var userLat = position.coords.latitude;
-      var userLon = position.coords.longitude;
+      const userLat = position.coords.latitude;
+      const userLon = position.coords.longitude;
 
-      var userLocation = L.latLng(userLat, userLon);
-
-      personMarker.setLatLng(userLocation);
-
-      map.setView(userLocation);
-
-      // Remove previous route
-      if (routingControl != null) {
-        map.removeControl(routingControl);
+      // Ignore tiny GPS noise (<2 meters)
+      if (lastLat && lastLon) {
+        const moved = map.distance(
+          [lastLat, lastLon],
+          [userLat, userLon]
+        );
+        if (moved < 2) return;
       }
 
-      // Create new route
-      routingControl = L.Routing.control({
-        waypoints: [
-          userLocation,
-          fireLocation
-        ],
-        routeWhileDragging: false,
-        addWaypoints: false,
-        draggableWaypoints: false,
-        show: true,
-        lineOptions: {
-          styles: [{ color: "red", weight: 6 }]
-        },
-        createMarker: function () { return null; } // prevent default markers
-      }).addTo(map);
+      lastLat = userLat;
+      lastLon = userLon;
+
+      personMarker.setLatLng([userLat, userLon]);
+
+      map.panTo([userLat, userLon]);
+
+      // Get new route
+      getRoute(userLat, userLon);
 
     },
-    function () {
-      alert("Please allow GPS access.");
+    function() {
+      alert("Please allow location access.");
     },
     {
       enableHighAccuracy: true,
@@ -101,7 +121,6 @@ if (navigator.geolocation) {
 } else {
   alert("Geolocation not supported.");
 }
-
 
 
    
