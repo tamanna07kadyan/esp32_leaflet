@@ -1,13 +1,13 @@
-/* =========================
+/* ===========================
    FIRE LOCATION
-========================= */
+=========================== */
 
 const fireLat = 26.403505;
 const fireLon = 75.875557;
 
-/* =========================
+/* ===========================
    INITIALIZE MAP
-========================= */
+=========================== */
 
 var map = L.map("map").setView([fireLat, fireLon], 18);
 
@@ -16,9 +16,9 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 22
 }).addTo(map);
 
-/* =========================
-   FIRE ICON
-========================= */
+/* ===========================
+   FIRE MARKER
+=========================== */
 
 var fireIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/785/785116.png",
@@ -31,9 +31,9 @@ L.marker([fireLat, fireLon], { icon: fireIcon })
   .bindPopup("🔥 Fire Location")
   .openPopup();
 
-/* =========================
-   PERSON ICON
-========================= */
+/* ===========================
+   PERSON MARKER
+=========================== */
 
 var personIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
@@ -43,39 +43,50 @@ var personIcon = L.icon({
 
 var personMarker = L.marker([fireLat, fireLon], { icon: personIcon }).addTo(map);
 
-/* =========================
+/* ===========================
    ROUTE LINE
-========================= */
+=========================== */
 
 var routeLine = L.polyline([], {
   color: "red",
   weight: 6
 }).addTo(map);
 
-/* =========================
-   FETCH ROUTE FROM OSRM
-========================= */
+/* ===========================
+   FUNCTION TO GET ROAD ROUTE
+=========================== */
 
-async function getRoute(userLat, userLon) {
+async function fetchRoute(userLat, userLon) {
 
-  const url = `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${fireLon},${fireLat}?overview=full&geometries=geojson`;
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/` +
+    `${userLon},${userLat};${fireLon},${fireLat}` +
+    `?overview=full&geometries=geojson`;
 
-  const response = await fetch(url);
-  const data = await response.json();
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
 
-  if (data.routes.length > 0) {
+    if (data.routes && data.routes.length > 0) {
 
-    const routeCoordinates = data.routes[0].geometry.coordinates;
+      const coordinates = data.routes[0].geometry.coordinates;
 
-    const latLngs = routeCoordinates.map(coord => [coord[1], coord[0]]);
+      const latLngs = coordinates.map(coord => [
+        coord[1],  // latitude
+        coord[0]   // longitude
+      ]);
 
-    routeLine.setLatLngs(latLngs);
+      routeLine.setLatLngs(latLngs);
+    }
+
+  } catch (error) {
+    console.log("Routing error:", error);
   }
 }
 
-/* =========================
-   REAL TIME GPS
-========================= */
+/* ===========================
+   REAL TIME GPS TRACKING
+=========================== */
 
 var lastLat = null;
 var lastLon = null;
@@ -88,24 +99,26 @@ if (navigator.geolocation) {
       const userLat = position.coords.latitude;
       const userLon = position.coords.longitude;
 
-      // Ignore tiny GPS noise (<2 meters)
+      // Ignore tiny movements (<2 meters)
       if (lastLat && lastLon) {
-        const moved = map.distance(
+        const distance = map.distance(
           [lastLat, lastLon],
           [userLat, userLon]
         );
-        if (moved < 2) return;
+        if (distance < 2) return;
       }
 
       lastLat = userLat;
       lastLon = userLon;
 
+      // Move marker
       personMarker.setLatLng([userLat, userLon]);
 
+      // Center map
       map.panTo([userLat, userLon]);
 
-      // Get new route
-      getRoute(userLat, userLon);
+      // Fetch new route
+      fetchRoute(userLat, userLon);
 
     },
     function() {
@@ -121,6 +134,7 @@ if (navigator.geolocation) {
 } else {
   alert("Geolocation not supported.");
 }
+
 
 
    
