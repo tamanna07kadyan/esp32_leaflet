@@ -1,9 +1,21 @@
 body {
+  font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
 }
 
+h2 {
+  text-align: center;
+}
+
+#distance {
+  text-align: center;
+  font-size: 18px;
+  padding: 8px;
+  background: #f3f3f3;
+}
+
 #map {
-  height: 100vh;
+  height: 85vh;
   width: 100%;
 }
