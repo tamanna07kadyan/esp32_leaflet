@@ -2,7 +2,7 @@
    1. MAP INITIALIZATION
 ================================= */
 
-var map = L.map("map").setView([26.398367, 75.876068], 21);
+var map = L.map("map").setView([26.403505, 75.875557], 19);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap contributors",
@@ -11,125 +11,143 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 
 /* =================================
-   2. FIRE ESP32 LOCATION (FIXED)
+   2. FIRE LOCATION (DESTINATION)
 ================================= */
 
-var fireESP32 = {
-  lat: 26.398612,
-  lon: 75.876319
+var fireLocation = {
+  lat: 26.403505,
+  lon: 75.875557
 };
 
+var fireIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/482/482132.png",
+  iconSize: [35, 35],
+  iconAnchor: [17, 35]
+});
 
-/* =================================
-   3. FIRE MARKER (SMALL)
-================================= */
-
-var fireMarker = L.circle(
-  [fireESP32.lat, fireESP32.lon],
-  {
-    color: "red",
-    fillColor: "red",
-    fillOpacity: 0.8,
-    radius: 0.3125
-  }
+var fireMarker = L.marker(
+  [fireLocation.lat, fireLocation.lon],
+  { icon: fireIcon }
 ).addTo(map);
 
 fireMarker.bindPopup("🔥 FIRE DETECTED").openPopup();
 
 
 /* =================================
-   4. CONTROL ROOM MARKER (GPS)
+   3. CONTROL ROOM (STATIC)
 ================================= */
 
-var controlMarker = L.circle(
-  [0, 0],
-  {
-    color: "blue",
-    fillColor: "blue",
-    fillOpacity: 0.7,
-    radius: 0.3125
-  }
+var controlRoom = {
+  lat: 26.402944,
+  lon: 75.875582
+};
+
+var controlIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+  iconSize: [30, 30],
+  iconAnchor: [15, 30]
+});
+
+var controlMarker = L.marker(
+  [controlRoom.lat, controlRoom.lon],
+  { icon: controlIcon }
 ).addTo(map);
 
-controlMarker.bindPopup("🧑‍🚒 Your Location");
+controlMarker.bindPopup("🏢 Control Room");
 
 
 /* =================================
-   5. PATH LINE
+   4. MOVING LOCATION (LIVE USER)
 ================================= */
 
-var firePath = L.polyline([], {
-  color: "red",
-  weight: 4
+var movingIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+  iconSize: [30, 30],
+  iconAnchor: [15, 30]
+});
+
+var movingMarker = L.marker([0, 0], {
+  icon: movingIcon
 }).addTo(map);
 
+movingMarker.bindPopup("📍 Moving Location");
+
 
 /* =================================
-   6. DISTANCE FUNCTION
+   5. DASHED PATH (TRAVELLED PATH)
 ================================= */
 
-function distanceMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+var travelledPath = L.polyline([], {
+  color: "blue",
+  weight: 4,
+  dashArray: "8,8"
+}).addTo(map);
 
-  const a =
-    Math.sin(dLat / 2) ** 2 +
+var pathCoordinates = [];
+
+
+/* =================================
+   6. DISTANCE CALCULATION FUNCTION
+================================= */
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  var R = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLon = (lon2 - lon1) * Math.PI / 180;
+
+  var a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
 
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c * 1000;
 }
 
 
 /* =================================
-   7. REAL GPS TRACKING (KEY PART)
+   7. REAL-TIME GPS TRACKING
 ================================= */
 
-if ("geolocation" in navigator) {
+if (navigator.geolocation) {
 
-  navigator.geolocation.watchPosition(
-    function (position) {
+  navigator.geolocation.watchPosition(function (position) {
 
-      var lat = position.coords.latitude;
-      var lon = position.coords.longitude;
+    var userLat = position.coords.latitude;
+    var userLon = position.coords.longitude;
 
-      // Update marker
-      controlMarker.setLatLng([lat, lon]);
+    movingMarker.setLatLng([userLat, userLon]);
 
-      // Update path
-      firePath.setLatLngs([
-        [lat, lon],
-        [fireESP32.lat, fireESP32.lon]
-      ]);
+    map.setView([userLat, userLon], 19);
 
-      // Update distance
-      var dist = distanceMeters(
-        lat,
-        lon,
-        fireESP32.lat,
-        fireESP32.lon
-      ).toFixed(2);
+    pathCoordinates.push([userLat, userLon]);
+    travelledPath.setLatLngs(pathCoordinates);
 
-      document.getElementById("distance").innerHTML =
-        "📍 Distance to fire: " + dist + " meters";
+    var distance = calculateDistance(
+      userLat,
+      userLon,
+      fireLocation.lat,
+      fireLocation.lon
+    ).toFixed(2);
 
-      // Follow user like Google Maps
-      map.panTo([lat, lon], { animate: true });
+    document.getElementById("distance").innerHTML =
+      "🔥 Distance to Fire: " + distance + " meters";
 
-    },
-    function (error) {
-      document.getElementById("distance").innerHTML =
-        "❌ Location access denied";
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 5000
-    }
-  );
+  },
+  function () {
+    alert("Location access denied. Please allow GPS permission.");
+  },
+  {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 5000
+  });
 
 } else {
-  alert("Geolocation not supported");
+  alert("Geolocation is not supported by this browser.");
 }
+
+   
+
