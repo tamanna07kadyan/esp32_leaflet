@@ -20,14 +20,14 @@ var fireLocation = {
 };
 
 var fireIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/482/482132.png",
-  iconSize: [35, 35],
-  iconAnchor: [17, 35]
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/785/785116.png",
+  iconSize: [40, 40],
+  iconAnchor: [20, 40]
 });
 
 L.marker([fireLocation.lat, fireLocation.lon], { icon: fireIcon })
   .addTo(map)
-  .bindPopup("🔥 FIRE DETECTED")
+  .bindPopup("🔥 Fire Location")
   .openPopup();
 
 
@@ -41,9 +41,9 @@ var controlRoom = {
 };
 
 var controlIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-  iconSize: [30, 30],
-  iconAnchor: [15, 30]
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/619/619034.png",
+  iconSize: [35, 35],
+  iconAnchor: [17, 35]
 });
 
 L.marker([controlRoom.lat, controlRoom.lon], { icon: controlIcon })
@@ -52,32 +52,32 @@ L.marker([controlRoom.lat, controlRoom.lon], { icon: controlIcon })
 
 
 /* =================================
-   4. MOVING USER MARKER
+   4. MOVING PERSON (REAL GPS)
 ================================= */
 
-var userIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-  iconSize: [30, 30],
-  iconAnchor: [15, 30]
+var personIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
+  iconSize: [35, 35],
+  iconAnchor: [17, 35]
 });
 
-var userMarker = L.marker([0, 0], { icon: userIcon }).addTo(map);
+var personMarker = L.marker([0, 0], { icon: personIcon }).addTo(map);
 
 
 /* =================================
-   5. SOLID PATH (FULL LINE)
+   5. SOLID PATH LINE
 ================================= */
 
 var pathCoordinates = [];
 
 var travelledPath = L.polyline(pathCoordinates, {
   color: "blue",
-  weight: 5
+  weight: 6
 }).addTo(map);
 
 
 /* =================================
-   6. DISTANCE FUNCTION
+   6. DISTANCE CALCULATION
 ================================= */
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -89,7 +89,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
 
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c * 1000;
@@ -97,7 +98,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 
 /* =================================
-   7. REAL GPS TRACKING (STABLE)
+   7. REAL GPS TRACKING
 ================================= */
 
 var lastLat = null;
@@ -111,26 +112,26 @@ if (navigator.geolocation) {
       var userLat = position.coords.latitude;
       var userLon = position.coords.longitude;
 
-      // Ignore very tiny movements (GPS noise)
+      // Ignore very small GPS noise (<1 meter)
       if (lastLat && lastLon) {
         var movement = calculateDistance(lastLat, lastLon, userLat, userLon);
-        if (movement < 1) return; // Ignore movement less than 1 meter
+        if (movement < 1) return;
       }
 
       lastLat = userLat;
       lastLon = userLon;
 
-      // Update marker
-      userMarker.setLatLng([userLat, userLon]);
+      // Update marker position
+      personMarker.setLatLng([userLat, userLon]);
 
-      // Add to path
+      // Add to solid path
       pathCoordinates.push([userLat, userLon]);
       travelledPath.setLatLngs(pathCoordinates);
 
-      // Keep map centered smoothly
+      // Center map on moving user
       map.setView([userLat, userLon]);
 
-      // Distance to fire
+      // Update distance to fire
       var distance = calculateDistance(
         userLat,
         userLon,
@@ -142,7 +143,7 @@ if (navigator.geolocation) {
         "🔥 Distance to Fire: " + distance + " meters";
 
     },
-    function (error) {
+    function () {
       alert("Location access denied. Please allow GPS.");
     },
     {
