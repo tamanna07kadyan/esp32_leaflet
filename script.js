@@ -1,20 +1,18 @@
-// Initialize Map
 var map = L.map('map').setView([28.6139, 77.2090], 13);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Connect to MQTT
+// Secure WebSocket for HTTPS site
 const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
 client.on("connect", function () {
-    console.log("Connected to MQTT");
+    console.log("Connected to HiveMQ");
     client.subscribe("esp32/alert");
 });
 
 client.on("message", function (topic, message) {
-
     let data = JSON.parse(message.toString());
 
     let lat = data.lat;
@@ -22,10 +20,12 @@ client.on("message", function (topic, message) {
 
     L.marker([lat, lon])
         .addTo(map)
-        .bindPopup("🔥 FIRE ALERT!")
+        .bindPopup("🔥 Fire Alert Detected!")
         .openPopup();
 
     map.setView([lat, lon], 18);
 });
 
-   
+client.on("error", function (error) {
+    console.log("Connection error: ", error);
+});
