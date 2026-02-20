@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Fire Alert Map</title>
+    <title>ESP32 Alert Map</title>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- MQTT JS -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
     <style>
@@ -19,53 +23,32 @@
 
 <script>
 
-// Control Room Location
-var controlRoom = [26.403216, 75.875765];
+// Step 1: Create Map
+var map = L.map('map').setView([26.403216, 75.875765], 17);
 
-var map = L.map('map').setView(controlRoom, 17);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+.addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-// Control Room Marker
-L.marker(controlRoom).addTo(map)
-    .bindPopup("Control Room")
-    .openPopup();
-
-// MQTT Connection (WebSocket)
+// Step 2: Connect to MQTT Broker (WebSocket)
 const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
+// Step 3: When connected
 client.on("connect", function () {
     console.log("Connected to MQTT");
     client.subscribe("esp32/alert");
 });
 
-// Listen for alert
+// Step 4: When alert received
 client.on("message", function (topic, message) {
 
     let data = JSON.parse(message.toString());
 
-    let deviceLocation = [data.lat, data.lon];
+    let location = [data.lat, data.lon];
 
-    // Remove old marker if exists
-    if (window.alertMarker) {
-        map.removeLayer(window.alertMarker);
-    }
-
-    // Add new marker
-    window.alertMarker = L.marker(deviceLocation)
+    L.marker(location)
         .addTo(map)
         .bindPopup(data.device + " ALERT!")
         .openPopup();
-
-    // Draw line from control room
-    if (window.alertLine) {
-        map.removeLayer(window.alertLine);
-    }
-
-    window.alertLine = L.polyline([controlRoom, deviceLocation], {
-        color: 'red'
-    }).addTo(map);
-
 });
 
 </script>
