@@ -36,3 +36,4 @@ client.on("message", function (topic, message) {
 
     map.setView(location, 18);
 });
+Updated MQTT connection and marker logic
