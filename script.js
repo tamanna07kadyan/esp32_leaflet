@@ -1,97 +1,65 @@
-/* ===============================
-   FIRE ESP32 FIXED LOCATION
-================================ */
-const fireESP32 = {
-  lat: 26.398612,
-  lon: 75.876319
-};
+// CONTROL ROOM LOCATION
+var controlLat = 26.403216;
+var controlLon = 75.875765;
 
-/* ===============================
-   MAP INITIALIZATION
-================================ */
-const map = L.map("map").setView([fireESP32.lat, fireESP32.lon], 18);
+// Initialize map
+var map = L.map('map').setView([controlLat, controlLon], 18);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 22,
-  attribution: "© OpenStreetMap"
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
 }).addTo(map);
 
-/* ===============================
-   FIRE MARKER
-================================ */
-const fireMarker = L.marker([fireESP32.lat, fireESP32.lon])
+// Control Room Marker
+var controlMarker = L.marker([controlLat, controlLon])
   .addTo(map)
-  .bindPopup("🔥 Fire Detected");
+  .bindPopup("🏢 Control Room")
+  .openPopup();
 
-/* ===============================
-   CONTROL ROOM MARKER (GPS)
-================================ */
-let controlMarker = null;
-let pathLine = null;
+// Fire marker and path
+var fireMarker = null;
+var pathLine = null;
 
-/* ===============================
-   DISTANCE FUNCTION
-================================ */
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+// Connect to MQTT
+var client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+client.on('connect', function () {
+  console.log("Connected to MQTT");
+  client.subscribe('esp32/alert');
+});
 
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+client.on('message', function (topic, message) {
 
-/* ===============================
-   REAL GPS TRACKING
-================================ */
-if ("geolocation" in navigator) {
+  var data = JSON.parse(message.toString());
 
-  navigator.geolocation.watchPosition(
-    (position) => {
+  var fireLat = data.lat;
+  var fireLon = data.lon;
 
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
+  // Remove old marker & path
+  if (fireMarker != null) {
+    map.removeLayer(fireMarker);
+  }
 
-      if (!controlMarker) {
-        controlMarker = L.marker([lat, lon]).addTo(map);
-        pathLine = L.polyline([[lat, lon], [fireESP32.lat, fireESP32.lon]], {
-          color: "red"
-        }).addTo(map);
-      } else {
-        controlMarker.setLatLng([lat, lon]);
-        pathLine.setLatLngs([[lat, lon], [fireESP32.lat, fireESP32.lon]]);
-      }
+  if (pathLine != null) {
+    map.removeLayer(pathLine);
+  }
 
-      const distance = calculateDistance(
-        lat, lon,
-        fireESP32.lat, fireESP32.lon
-      ).toFixed(2);
+  // Add new fire marker
+  fireMarker = L.marker([fireLat, fireLon])
+    .addTo(map)
+    .bindPopup("🔥 FIRE DETECTED at " + data.device)
+    .openPopup();
 
-      document.getElementById("distance").innerHTML =
-        "📍 Distance to fire: " + distance + " meters";
+  // Draw red path
+  pathLine = L.polyline([
+    [controlLat, controlLon],
+    [fireLat, fireLon]
+  ], {
+    color: 'red',
+    weight: 4
+  }).addTo(map);
 
-    },
-    (error) => {
-      document.getElementById("distance").innerHTML =
-        "❌ Location error: Allow GPS permission";
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 10000
-    }
-  );
-
-} else {
-  alert("GPS not supported");
-}
-
-
+  map.fitBounds(pathLine.getBounds());
+});
 
 
    
