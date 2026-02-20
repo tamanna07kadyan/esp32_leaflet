@@ -1,15 +1,11 @@
-var controlRoom = [26.403216, 75.875765];
+// Initialize Map
+var map = L.map('map').setView([28.6139, 77.2090], 13);
 
-var map = L.map('map').setView(controlRoom, 17);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+}).addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(map);
-
-L.marker(controlRoom)
-  .addTo(map)
-  .bindPopup("Control Room")
-  .openPopup();
-
+// Connect to MQTT
 const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
 client.on("connect", function () {
@@ -17,23 +13,19 @@ client.on("connect", function () {
     client.subscribe("esp32/alert");
 });
 
-let markers = {};
-
 client.on("message", function (topic, message) {
 
     let data = JSON.parse(message.toString());
-    let device = data.device;
-    let location = [data.lat, data.lon];
 
-    if (markers[device]) {
-        map.removeLayer(markers[device]);
-    }
+    let lat = data.lat;
+    let lon = data.lon;
 
-    markers[device] = L.marker(location)
+    L.marker([lat, lon])
         .addTo(map)
-        .bindPopup(device + " ALERT!")
+        .bindPopup("🔥 FIRE ALERT!")
         .openPopup();
 
-    map.setView(location, 18);
+    map.setView([lat, lon], 18);
 });
 
+   
