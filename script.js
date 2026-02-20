@@ -5,7 +5,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // Secure WebSocket for HTTPS site
-const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt", {
+    clientId: "web_" + Math.random().toString(16).substr(2, 8),
+    clean: true,
+    connectTimeout: 4000
+});
 
 client.on("connect", function () {
     console.log("Connected to HiveMQ");
