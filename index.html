@@ -1,23 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <title>ESP32 Alert Map</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- MQTT Library -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        #map {
+            height: 100vh;
+        }
+    </style>
 </head>
+
 <body>
 
-<h2>MQTT Test</h2>
+<div id="map"></div>
 
-<script>
-const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
-
-client.on("connect", function () {
-    console.log("Connected Successfully!");
-});
-
-client.on("error", function (err) {
-    console.log("Connection Error:", err);
-});
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
