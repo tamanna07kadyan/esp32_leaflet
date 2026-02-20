@@ -1,66 +1,38 @@
-// CONTROL ROOM LOCATION
-var controlLat = 26.403216;
-var controlLon = 75.875765;
+var controlRoom = [26.403216, 75.875765];
 
-// Initialize map
-var map = L.map('map').setView([controlLat, controlLon], 18);
+var map = L.map('map').setView(controlRoom, 17);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+.addTo(map);
 
-// Control Room Marker
-var controlMarker = L.marker([controlLat, controlLon])
+L.marker(controlRoom)
   .addTo(map)
-  .bindPopup("🏢 Control Room")
+  .bindPopup("Control Room")
   .openPopup();
 
-// Fire marker and path
-var fireMarker = null;
-var pathLine = null;
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
-// Connect to MQTT
-var client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-
-client.on('connect', function () {
-  console.log("Connected to MQTT");
-  client.subscribe('esp32/alert');
+client.on("connect", function () {
+    console.log("Connected to MQTT");
+    client.subscribe("esp32/alert");
 });
 
-client.on('message', function (topic, message) {
+let markers = {};
 
-  var data = JSON.parse(message.toString());
+client.on("message", function (topic, message) {
 
-  var fireLat = data.lat;
-  var fireLon = data.lon;
+    let data = JSON.parse(message.toString());
+    let device = data.device;
+    let location = [data.lat, data.lon];
 
-  // Remove old marker & path
-  if (fireMarker != null) {
-    map.removeLayer(fireMarker);
-  }
+    if (markers[device]) {
+        map.removeLayer(markers[device]);
+    }
 
-  if (pathLine != null) {
-    map.removeLayer(pathLine);
-  }
+    markers[device] = L.marker(location)
+        .addTo(map)
+        .bindPopup(device + " ALERT!")
+        .openPopup();
 
-  // Add new fire marker
-  fireMarker = L.marker([fireLat, fireLon])
-    .addTo(map)
-    .bindPopup("🔥 FIRE DETECTED at " + data.device)
-    .openPopup();
-
-  // Draw red path
-  pathLine = L.polyline([
-    [controlLat, controlLon],
-    [fireLat, fireLon]
-  ], {
-    color: 'red',
-    weight: 4
-  }).addTo(map);
-
-  map.fitBounds(pathLine.getBounds());
+    map.setView(location, 18);
 });
-
-
-   
-
