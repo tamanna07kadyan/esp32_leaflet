@@ -1,9 +1,3 @@
-body {
-  text-align: center;
-  font-family: Arial;
-}
-
 #map {
-  height: 500px;
-  width: 100%;
+    height: 100vh;
 }
