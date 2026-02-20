@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Fire Monitoring</title>
-    <meta charset="utf-8" />
-
-    <link rel="stylesheet" href="style.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
 
-<div id="map"></div>
+<h2>MQTT Test</h2>
 
-<script src="script.js"></script>
+<script>
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+client.on("connect", function () {
+    console.log("Connected Successfully!");
+});
+
+client.on("error", function (err) {
+    console.log("Connection Error:", err);
+});
+</script>
 
 </body>
 </html>
