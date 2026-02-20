@@ -1,57 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Alert Map</title>
+    <title>ESP32 Fire Monitoring</title>
     <meta charset="utf-8" />
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <!-- MQTT JS -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
-    <style>
-        #map { height: 100vh; }
-    </style>
 </head>
 <body>
 
 <div id="map"></div>
 
-<script>
-
-// Step 1: Create Map
-var map = L.map('map').setView([26.403216, 75.875765], 17);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(map);
-
-// Step 2: Connect to MQTT Broker (WebSocket)
-const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
-
-// Step 3: When connected
-client.on("connect", function () {
-    console.log("Connected to MQTT");
-    client.subscribe("esp32/alert");
-});
-
-// Step 4: When alert received
-client.on("message", function (topic, message) {
-
-    let data = JSON.parse(message.toString());
-
-    let location = [data.lat, data.lon];
-
-    L.marker(location)
-        .addTo(map)
-        .bindPopup(data.device + " ALERT!")
-        .openPopup();
-});
-
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
