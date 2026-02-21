@@ -1,54 +1,67 @@
-// ===== CONTROL ROOM COORDINATES =====
+// Control room coordinates
 const controlRoom = { lat: 26.400500, lon: 75.872500 };
 
-// ===== INITIALIZE MAP =====
+// Initialize map
 const map = L.map('map').setView([controlRoom.lat, controlRoom.lon], 15);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'Map data © OpenStreetMap contributors'
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
-// ===== CONTROL ROOM MARKER =====
+// Marker for control room
 const controlMarker = L.marker([controlRoom.lat, controlRoom.lon])
     .addTo(map)
     .bindPopup("Control Room")
     .openPopup();
 
-// ===== STORE ESP32 MARKERS & PATHS =====
-const espMarkers = {};   // marker per device
-const espPaths = {};     // path per device
+// Store markers and paths
+const espMarkers = {};
+const espPaths = {};
 
-// ===== MQTT CONNECTION TO HiveMQ =====
+// MQTT connect
 const client = mqtt.connect('wss://test.mosquitto.org:8081');
 
 client.on('connect', () => {
     console.log('Connected to MQTT broker');
-    client.subscribe('esp32/alert', err => {
-        if(!err) console.log('Subscribed to esp32/alert');
-    });
+    client.subscribe('esp32/alert', err => { if(!err) console.log('Subscribed'); });
 });
 
 client.on('message', (topic, message) => {
-    // Split comma-separated message: deviceName,temp,hum,gas,flame,lat,lon
-    const parts = message.toString().split(',');
-    
-    if(parts.length < 7) return; // skip invalid messages
+    let data = null;
 
-    const device = parts[0];
-    const temp = parseFloat(parts[1]);
-    const hum = parseFloat(parts[2]);
-    const gas = parseFloat(parts[3]);
-    const flame = parseInt(parts[4]);
-    const lat = parseFloat(parts[5]);
-    const lon = parseFloat(parts[6]);
+    // First try JSON.parse
+    try {
+        data = JSON.parse(message.toString());
+    } catch(e) {
+        // Fallback to comma-separated
+        const parts = message.toString().split(',');
+        if(parts.length < 7) return; // skip invalid
+        data = {
+            device: parts[0],
+            temp: parseFloat(parts[1]),
+            hum: parseFloat(parts[2]),
+            gas: parseFloat(parts[3]),
+            flame: parseInt(parts[4]),
+            lat: parseFloat(parts[5]),
+            lon: parseFloat(parts[6])
+        };
+    }
 
-    // ===== REMOVE OLD MARKER & PATH IF EXISTS =====
+    const device = data.device;
+    const temp = data.temp || 0;
+    const hum = data.hum || 0;
+    const gas = data.gas || 0;
+    const flame = data.flame || 0;
+    const lat = data.lat;
+    const lon = data.lon;
+
+    // Remove old marker/path if exists
     if(espMarkers[device]) map.removeLayer(espMarkers[device]);
     if(espPaths[device]) map.removeLayer(espPaths[device]);
 
-    // ===== ADD MARKER FOR ALERT =====
-    espMarkers[device] = L.marker([lat,lon], {
+    // Add marker
+    espMarkers[device] = L.marker([lat, lon], {
         icon: L.icon({
-            iconUrl:'https://cdn-icons-png.flaticon.com/512/482/482682.png', // fire icon
+            iconUrl:'https://cdn-icons-png.flaticon.com/512/482/482682.png',
             iconSize:[32,32]
         })
     }).addTo(map)
@@ -59,12 +72,12 @@ client.on('message', (topic, message) => {
                   Flame: ${flame}`)
       .openPopup();
 
-    // ===== DRAW PATH FROM CONTROL ROOM =====
+    // Draw path
     espPaths[device] = L.polyline([[controlRoom.lat,controlRoom.lon],[lat,lon]], {
         color:'red', weight:4, opacity:0.7, dashArray:'10,10'
     }).addTo(map);
 
-    // ===== FIT MAP TO INCLUDE CONTROL ROOM + ESP32 =====
+    // Fit bounds
     const group = new L.featureGroup([controlMarker, espMarkers[device]]);
     map.fitBounds(group.getBounds().pad(0.2));
 });
