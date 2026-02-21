@@ -28,18 +28,20 @@ client.on('message', function (topic, message) {
 
     console.log("Message received:", message.toString());
 
-    const parts = message.toString().split(',');
-    if (parts.length < 7) return;
+    let data;
 
-    const device = parts[0];
-    const temp = parts[1];
-    const hum = parts[2];
-    const gas = parts[3];
-    const flame = parts[4];
-    const lat = parseFloat(parts[5]);
-    const lon = parseFloat(parts[6]);
+    try {
+        data = JSON.parse(message.toString());
+    } catch (e) {
+        console.log("Invalid JSON");
+        return;
+    }
 
-    if (!lat || !lon) return;
+    if (!data.device || !data.lat || !data.lon) return;
+
+    const device = data.device;
+    const lat = parseFloat(data.lat);
+    const lon = parseFloat(data.lon);
 
     // Remove old marker/path
     if (espMarkers[device]) map.removeLayer(espMarkers[device]);
@@ -52,13 +54,7 @@ client.on('message', function (topic, message) {
             iconSize: [32, 32]
         })
     }).addTo(map)
-      .bindPopup(
-        "<b>" + device + " ON FIRE</b><br>" +
-        "Temp: " + temp + "°C<br>" +
-        "Humidity: " + hum + "%<br>" +
-        "Gas: " + gas + "<br>" +
-        "Flame: " + flame
-      )
+      .bindPopup("<b>" + device + " ON FIRE</b>")
       .openPopup();
 
     // Draw path
