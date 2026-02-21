@@ -1,24 +1,12 @@
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    background-color: #f4f4f4;
+body { 
+    margin:0; 
+    font-family: Arial, sans-serif; 
 }
-
-h2 {
-    margin: 10px;
+h1 { 
+    text-align:center; 
+    margin:10px 0; 
 }
-
-#status {
-    margin-bottom: 10px;
-    font-weight: bold;
-    color: blue;
-}
-
-#map {
-    height: 500px;
-    width: 90%;
-    margin: auto;
-    border: 2px solid black;
-    border-radius: 10px;
+#map { 
+    height:90vh; 
+    width:100%; 
 }
