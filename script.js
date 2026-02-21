@@ -1,40 +1,43 @@
-// Control room coordinates
+// ===== CONTROL ROOM =====
 const controlRoom = { lat: 26.400500, lon: 75.872500 };
 
-// Initialize map
+// ===== MAP INIT =====
 const map = L.map('map').setView([controlRoom.lat, controlRoom.lon], 15);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'Map data © OpenStreetMap contributors'
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Marker for control room
+// ===== CONTROL ROOM MARKER =====
 const controlMarker = L.marker([controlRoom.lat, controlRoom.lon])
     .addTo(map)
     .bindPopup("Control Room")
     .openPopup();
 
-// Store markers and paths
+// ===== STORE DEVICES =====
 const espMarkers = {};
 const espPaths = {};
 
-// MQTT connect
+// ===== MQTT CONNECT =====
 const client = mqtt.connect('wss://test.mosquitto.org:8081');
 
-client.on('connect', () => {
-    console.log('Connected to MQTT broker');
-    client.subscribe('esp32/alert', err => { if(!err) console.log('Subscribed'); });
+client.on('connect', function () {
+    console.log("Connected to HiveMQ");
+    client.subscribe('esp32/alert');
 });
 
-client.on('message', (topic, message) => {
-    let data = null;
+client.on('message', function (topic, message) {
 
-    // First try JSON.parse
+    let data;
+
+    // Try JSON first
     try {
         data = JSON.parse(message.toString());
-    } catch(e) {
-        // Fallback to comma-separated
+    } catch (e) {
+        // If not JSON, try comma format
         const parts = message.toString().split(',');
-        if(parts.length < 7) return; // skip invalid
+        if (parts.length < 7) return;
+
         data = {
             device: parts[0],
             temp: parseFloat(parts[1]),
@@ -46,38 +49,37 @@ client.on('message', (topic, message) => {
         };
     }
 
+    if (!data.lat || !data.lon || !data.device) return;
+
     const device = data.device;
-    const temp = data.temp || 0;
-    const hum = data.hum || 0;
-    const gas = data.gas || 0;
-    const flame = data.flame || 0;
-    const lat = data.lat;
-    const lon = data.lon;
 
-    // Remove old marker/path if exists
-    if(espMarkers[device]) map.removeLayer(espMarkers[device]);
-    if(espPaths[device]) map.removeLayer(espPaths[device]);
+    // Remove old marker and path
+    if (espMarkers[device]) map.removeLayer(espMarkers[device]);
+    if (espPaths[device]) map.removeLayer(espPaths[device]);
 
-    // Add marker
-    espMarkers[device] = L.marker([lat, lon], {
+    // Add new marker
+    espMarkers[device] = L.marker([data.lat, data.lon], {
         icon: L.icon({
-            iconUrl:'https://cdn-icons-png.flaticon.com/512/482/482682.png',
-            iconSize:[32,32]
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/482/482682.png',
+            iconSize: [32, 32]
         })
     }).addTo(map)
-      .bindPopup(`${device} ALERT<br>
-                  Temp: ${temp}°C<br>
-                  Hum: ${hum}%<br>
-                  Gas: ${gas}<br>
-                  Flame: ${flame}`)
+      .bindPopup(
+        device + " ALERT<br>" +
+        "Temp: " + (data.temp || 0) + "°C<br>" +
+        "Hum: " + (data.hum || 0) + "%<br>" +
+        "Gas: " + (data.gas || 0) + "<br>" +
+        "Flame: " + (data.flame || 0)
+      )
       .openPopup();
 
     // Draw path
-    espPaths[device] = L.polyline([[controlRoom.lat,controlRoom.lon],[lat,lon]], {
-        color:'red', weight:4, opacity:0.7, dashArray:'10,10'
-    }).addTo(map);
+    espPaths[device] = L.polyline(
+        [[controlRoom.lat, controlRoom.lon], [data.lat, data.lon]],
+        { color: 'red', weight: 4, dashArray: '10,10' }
+    ).addTo(map);
 
-    // Fit bounds
+    // Zoom properly
     const group = new L.featureGroup([controlMarker, espMarkers[device]]);
     map.fitBounds(group.getBounds().pad(0.2));
 });
