@@ -1,17 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>ESP32 Fire Alert Map</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <meta charset="UTF-8">
+    <title>🔥 Fire Monitoring Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>ESP32 Fire Alert Map</h1>
+
+<h2>🔥 Fire Monitoring System</h2>
 <div id="map"></div>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- MQTT JS -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
 <script src="script.js"></script>
+
 </body>
 </html>
