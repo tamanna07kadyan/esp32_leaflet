@@ -24,10 +24,10 @@ var pathLine = null;
 // ===============================
 // CONNECT TO HIVEMQ (SECURE WSS)
 // ===============================
-var client = mqtt.connect("wss://broker.hivemq.com:8000/mqtt", {
-    reconnectPeriod: 2000,
-    connectTimeout: 4000,
-    clean: true
+var client = mqtt.connect("wss://test.mosquitto.org:8081");
+
+client.on("connect", function() {
+    alert("Connected Successfully!");
 });
 // When connected
 client.on("connect", function () {
