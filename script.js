@@ -1,68 +1,78 @@
-// ===== CONTROL ROOM =====
-const controlRoom = { lat: 26.400500, lon: 75.872500 };
+// ===============================
+// ESP32-1 = Control Room (Base)
+// ===============================
+var baseLocation = [26.403216, 75.875765];
 
-// ===== MAP =====
-const map = L.map('map').setView([controlRoom.lat, controlRoom.lon], 15);
+// Initialize Map
+var map = L.map('map').setView(baseLocation, 18);
 
+// OpenStreetMap Tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
+    maxZoom: 19
 }).addTo(map);
 
-const controlMarker = L.marker([controlRoom.lat, controlRoom.lon])
+// Base Marker
+L.marker(baseLocation)
     .addTo(map)
-    .bindPopup("Control Room")
+    .bindPopup("🏢 ESP32-1 (Control Room)")
     .openPopup();
 
-const espMarkers = {};
-const espPaths = {};
+// Variables to store current fire marker & path
+var fireMarker = null;
+var pathLine = null;
 
-// ===== HIVEMQ WEBSOCKET CONNECTION =====
-const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+// ===============================
+// CONNECT TO HIVEMQ (SECURE WSS)
+// ===============================
+var client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
-client.on('connect', function () {
+// When connected
+client.on("connect", function () {
     console.log("Connected to HiveMQ");
-    client.subscribe('esp32/alert');
+    client.subscribe("fire/alert");
 });
 
-client.on('message', function (topic, message) {
+// When message received
+client.on("message", function (topic, message) {
 
-    console.log("Message received:", message.toString());
+    console.log("Message Received:", message.toString());
 
-    let data;
+    var data = message.toString().split(",");
 
-    try {
-        data = JSON.parse(message.toString());
-    } catch (e) {
-        console.log("Invalid JSON");
-        return;
+    // Payload format:
+    // device,temp,hum,gas,ir,lat,lon
+
+    var device = data[0];
+    var lat = parseFloat(data[5]);
+    var lon = parseFloat(data[6]);
+
+    // Remove old marker if exists
+    if (fireMarker !== null) {
+        map.removeLayer(fireMarker);
     }
 
-    if (!data.device || !data.lat || !data.lon) return;
+    // Remove old path if exists
+    if (pathLine !== null) {
+        map.removeLayer(pathLine);
+    }
 
-    const device = data.device;
-    const lat = parseFloat(data.lat);
-    const lon = parseFloat(data.lon);
+    // Add new fire marker
+    fireMarker = L.marker([lat, lon])
+        .addTo(map)
+        .bindPopup("🔥 Fire Alert at " + device)
+        .openPopup();
 
-    // Remove old marker/path
-    if (espMarkers[device]) map.removeLayer(espMarkers[device]);
-    if (espPaths[device]) map.removeLayer(espPaths[device]);
+    // Draw new path from Control Room to Fire Location
+    pathLine = L.polyline([baseLocation, [lat, lon]], {
+        color: "red",
+        weight: 5
+    }).addTo(map);
 
-    // Add marker
-    espMarkers[device] = L.marker([lat, lon], {
-        icon: L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/482/482682.png',
-            iconSize: [32, 32]
-        })
-    }).addTo(map)
-      .bindPopup("<b>" + device + " ON FIRE</b>")
-      .openPopup();
+    // Move map to fire location
+    map.setView([lat, lon], 18);
+});
 
-    // Draw path
-    espPaths[device] = L.polyline(
-        [[controlRoom.lat, controlRoom.lon], [lat, lon]],
-        { color: 'red', weight: 4 }
-    ).addTo(map);
-
-    const group = new L.featureGroup([controlMarker, espMarkers[device]]);
-    map.fitBounds(group.getBounds().pad(0.2));
+// If connection lost
+client.on("error", function (error) {
+    console.log("Connection error:", error);
 });
